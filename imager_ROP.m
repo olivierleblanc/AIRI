@@ -14,6 +14,7 @@ function imager(pathData, imPixelSize, imDimx, imDimy, param_general, runID)
     addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'irt', filesep, 'utilities']);
     addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'lib', filesep, 'utils']);
     addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'lib', filesep, 'operators']);
+    addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'lib', filesep, 'operators', filesep, 'ROP']);
     addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'lib', filesep, 'ddes_utils']);
 
     % set result directory
@@ -34,7 +35,7 @@ function imager(pathData, imPixelSize, imDimx, imDimy, param_general, runID)
     
     %% Measurements & operators
     % Load data
-    [DATA, param_general.flag_data_weighting] = util_read_data_file(pathData, param_general.flag_data_weighting);
+    [DATA, alpha, beta, param_general.flag_data_weighting] = util_read_data_file_ROP(pathData, param_general.flag_data_weighting);
 
     % Set pixel size
     if isempty(imPixelSize)
@@ -53,14 +54,26 @@ function imager(pathData, imPixelSize, imDimx, imDimy, param_general, runID)
     % Generate operators
     [A, At, G, W, nWimag, aW] = util_gen_meas_op_comp_single(pathData, imDimx, imDimy, ...
         param_general.flag_data_weighting, param_nufft, param_wproj, param_precond);
-    [measop, adjoint_measop] = util_syn_meas_op_single(A, At, G, W, []);
+
+    [measop2, adjoint_measop2] = util_syn_meas_op_single(A, At, G, W, []);
+
+    %% compute ROP operator
+    % ROP parameters
+    ROP_param = struct();
+    ROP_param.alpha = alpha;
+    ROP_param.beta = beta;
+    [D, Dt] = op_ROP(ROP_param);
+    
+    %% define the measurememt operator & its adjoint
+    measop = @(x) ( D(measop2(reshape(x, [imDimy, imDimx]))) ) ; 
+    adjoint_measop = @(y) adjoint_measop2(Dt(y));
 
     % %% perform the adjoint test
     % measop_vec = @(x) ( measop(reshape(x, [imDimy, imDimx])) ); 
     % adjoint_measop_vec = @(y) reshape(adjoint_measop(y), [imDimy*imDimx, 1]);
     % measop_shape = struct();
     % measop_shape.in = [512^2, 1];
-    % measop_shape.out = [100*27^2, 1];
+    % measop_shape.out = [250000, 1];
     % adjoint_test(measop_vec, adjoint_measop_vec, measop_shape);
 
     % Compute operator's spectral norm
