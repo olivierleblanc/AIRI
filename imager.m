@@ -35,7 +35,7 @@ function imager(pathData, imPixelSize, imDimx, imDimy, param_general, runID)
     
     %% Measurements & operators
     % Load data
-    [DATA, ROP_proj, param_general.flag_data_weighting] = util_read_data_file(pathData, param_general.flag_data_weighting);
+    [DATA, ROP_param, param_general.flag_data_weighting] = util_read_data_file(pathData, param_general.flag_data_weighting);
 
     % Set pixel size
     if isempty(imPixelSize)
@@ -56,7 +56,7 @@ function imager(pathData, imPixelSize, imDimx, imDimy, param_general, runID)
         param_general.flag_data_weighting, param_nufft, param_wproj, param_precond);
 
        %% define the measurememt operator & its adjoint
-    if isempty(ROP_proj) % only visibilities
+    if isempty(ROP_param) % only visibilities
 
         [measop, adjoint_measop] = util_syn_meas_op_single(A, At, G, W, []);
 
@@ -65,7 +65,7 @@ function imager(pathData, imPixelSize, imDimx, imDimy, param_general, runID)
         [measop2, adjoint_measop2] = util_syn_meas_op_single(A, At, G, W, []);
 
         %% compute ROP operator
-        [D, Dt] = op_ROP(ROP_proj);
+        [D, Dt] = op_ROP(ROP_param);
         
         measop = @(x) ( D(measop2(reshape(x, [imDimy, imDimx]))) ) ; 
         adjoint_measop = @(y) adjoint_measop2(Dt(y));
