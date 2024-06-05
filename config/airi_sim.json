@@ -8,7 +8,7 @@
             "imDimx": 512,
             "imDimy": 512,
             "imPixelSize": [],
-            "superresolution": 1.0,
+            "superresolution": 1,
             "groundtruth": [],
             "runID": []
         }
@@ -19,10 +19,14 @@
         "flag": {  
             "flag_comment_1": "flags",  
             "flag_imaging": true,    
-            "flag_data_weighting": true
+            "flag_data_weighting": false
         },
 
         "other":{
+            "weight_type": "briggs",
+            "weight_robustness": 0,
+            "weight_gridsize": 2,
+            "weight_load": false,
             "dirProject": [],
             "ncpus": []
         }
