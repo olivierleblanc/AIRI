@@ -13,6 +13,10 @@ function imager2(path_uv_data, param_general, runID)
     gdth_img = fitsread(param_general.groundtruth);
     imSize = size(gdth_img);
 
+    % figure();
+    % imshow(gdth_img);
+    % drawnow;
+
     %% Load uv-coverage data
     % [u, v, w, na] = generate_uv_coverage(frequency, nTimeSamples, obsTime, telescope, use_ROP);
     %%% TODO %%%
@@ -122,82 +126,87 @@ function imager2(path_uv_data, param_general, runID)
     % Measurement operator and its adjoint
     [measop, adjoint_measop] = ops_measop(vis_op, adjoint_vis_op, weight_param, ROP_param);
 
+    % Compute PSF
+    imDimy = imSize(1); 
+    imDimx = imSize(2);
+    dirac = sparse(floor(imDimy./2) + 1, floor(imDimx./2) + 1, 1, imDimy, imDimx);
+    PSF = adjoint_measop(measop(full(dirac)));
+    PSFPeak = max(PSF, [], 'all');  clear dirac;
+    fprintf('\nINFO: normalisation factor in RI, PSF peak value: %g', PSFPeak);
+
+
     %% Compute back-projected data: dirty image
     dirty = adjoint_measop(y);
+    peak_est = max(dirty,[],'all') / PSFPeak;
+    fprintf('\nINFO: dirty image peak value: %g', peak_est);
 
     figure(); imagesc(abs(dirty)); colorbar; title('Dirty image');
+    drawnow;
 
-    % % Compute operator's spectral norm
-    % fprintf('\nComputing spectral norm of the measurement operator..')
-    % param_general.measOpNorm = op_norm(measop, adjoint_measop, imSize, 1e-6, 200, 0);
-    % fprintf('\nINFO: measurement op norm %f', param_general.measOpNorm);
+    % Compute operator's spectral norm
+    fprintf('\nComputing spectral norm of the measurement operator..')
+    param_general.measOpNorm = op_norm(measop, adjoint_measop, imSize, 1e-6, 200, 0);
+    fprintf('\nINFO: measurement op norm %f', param_general.measOpNorm);
 
-    % % if use primal-dual
-    % if ismember(param_general.algorithm, {'cairi', 'cpnp-bm3d'})
-    %     [measop_cmp, adjoint_measop_cmp] = util_syn_meas_op_single(A, At, G, W, aW, true);
-    %     param_general.measOpNormCmp = op_norm(measop_cmp, adjoint_measop_cmp, imSize, 1e-6, 200, 0);
-    %     fprintf('\nINFO: measurement op norm for primal-dual %f', param_general.measOpNormCmp);
-    %     clear measop_cmp adjoint_measop_cmp
-    % end
-    
-    % % Compute PSF
-    % imDimy = imSize(1); 
-    % imDimx = imSize(2);
-    % dirac = sparse(floor(imDimy./2) + 1, floor(imDimx./2) + 1, 1, imDimy, imDimx);
-    % PSF = adjoint_measop(measop(full(dirac)));
-    % PSFPeak = max(PSF, [], 'all');  clear dirac;
-    % fprintf('\nINFO: normalisation factor in RI, PSF peak value: %g', PSFPeak);
+    % if use primal-dual
+    if ismember(param_general.algorithm, {'cairi', 'cpnp-bm3d'})
+        [measop_cmp, adjoint_measop_cmp] = util_syn_meas_op_single(A, At, G, W, aW, true);
+        param_general.measOpNormCmp = op_norm(measop_cmp, adjoint_measop_cmp, imSize, 1e-6, 200, 0);
+        fprintf('\nINFO: measurement op norm for primal-dual %f', param_general.measOpNormCmp);
+        clear measop_cmp adjoint_measop_cmp
+    end
 
-    % %% Heuristic noise level
-    % heuristic_noise = 1 / sqrt(2 * param_general.measOpNorm);
-    % fprintf('\nINFO: heuristic noise level: %g', heuristic_noise);
+    %% Heuristic noise level
+    heuristic_noise = 1 / sqrt(2 * param_general.measOpNorm);
+    fprintf('\nINFO: heuristic noise level: %g', heuristic_noise);
 
-    % %% Set parameters for imaging and algorithms
-    % param_algo = util_set_param_algo(param_general, heuristic_noise, peak_est, numel(DATA));
-    % param_imaging = util_set_param_imaging(param_general, param_algo, imSize);
-    
-    % %% Save dirty image, PSF and GT
-    % fitswrite(single(PSF), fullfile(param_imaging.resultPath, 'PSF.fits')); clear PSF;
-    % fitswrite(single(dirty./PSFPeak), fullfile(param_imaging.resultPath, 'dirty.fits'));
-    % fitswrite(gdth_img, fullfile(param_imaging.resultPath, 'GT.fits')) % ground truth
-    
-    % %% INFO
-    % fprintf("\n________________________________________________________________\n")
-    % disp('param_algo:')
-    % disp(param_algo)
-    % disp('param_imaging:')
-    % disp(param_imaging)
-    % fprintf("________________________________________________________________\n")
-    
-    % if param_imaging.flag_imaging
-    %     %% Imaging
-    %     switch param_algo.algorithm
-    %         case 'airi'
-    %             [MODEL, RESIDUAL] = airi(dirty, measop, adjoint_measop, param_imaging, param_algo);
-    %         case 'upnp-bm3d'
-    %             [MODEL, RESIDUAL] = upnp_bm3d(dirty, measop, adjoint_measop, param_imaging, param_algo);
-    %         case 'cairi'
-    %             [MODEL, RESIDUAL] = cairi(DATA, measop, adjoint_measop, aW, param_imaging, param_algo);
-    %         case 'cpnp-bm3d'
-    %             [MODEL, RESIDUAL] = cpnp_bm3d(DATA, measop, adjoint_measop, aW, param_imaging, param_algo);
-    %     end
+    %% Set parameters for imaging and algorithms
+    param_algo = util_set_param_algo(param_general, heuristic_noise, peak_est, numel(y));
+    param_imaging = util_set_param_imaging(param_general, param_algo, imSize);
 
-    %     %% Save final results
-    %     fitswrite(MODEL, fullfile(param_imaging.resultPath, [param_algo.algorithm, '_model_image.fits']))
-    %     fitswrite(RESIDUAL, fullfile(param_imaging.resultPath, [param_algo.algorithm, '_residual_dirty_image.fits']))
-    %     fitswrite(RESIDUAL ./ PSFPeak, fullfile(param_imaging.resultPath, [param_algo.algorithm, '_residual_dirty_image_normalised.fits']))
-    %     fprintf("\nFits files saved.")
-        
-    %     %% Final metrics
-    %     fprintf('\nINFO: The standard deviation of the final residual dirty image %g', std(RESIDUAL, 0, 'all'))
-    %     fprintf('\nINFO: The standard deviation of the normalised final residual dirty image %g', std(RESIDUAL, 0, 'all') / PSFPeak)
-    %     fprintf('\nINFO: The ratio between the norm of the residual and the dirty image: ||residual|| / || dirty || =  %g', norm(RESIDUAL(:))./norm(dirty(:)))
-    %     if isfield(param_imaging,'groundtruth') && ~isempty(param_imaging.groundtruth) && isfile(param_imaging.groundtruth)
-    %         gdth_img = fitsread(param_imaging.groundtruth);
-    %         rsnr = 20*log10( norm(gdth_img(:)) / norm(MODEL(:) - gdth_img(:)) );
-    %         fprintf('\nINFO: The signal-to-noise ratio of the final reconstructed image %f dB', rsnr)
-    %     end
-    
-    % end
-    % fprintf('\nTHE END\n')
+    %% Save dirty image, PSF and GT
+    fitswrite(single(PSF), fullfile(param_imaging.resultPath, 'PSF.fits')); clear PSF;
+    fitswrite(single(dirty), fullfile(param_imaging.resultPath, 'dirty_normalised.fits'));
+    fitswrite(single(dirty./PSFPeak), fullfile(param_imaging.resultPath, 'dirty.fits'));
+    fitswrite(gdth_img, fullfile(param_imaging.resultPath, 'GT.fits')) % ground truth
+
+    %% INFO
+    fprintf("\n________________________________________________________________\n")
+    disp('param_algo:')
+    disp(param_algo)
+    disp('param_imaging:')
+    disp(param_imaging)
+    fprintf("________________________________________________________________\n")
+
+    if param_imaging.flag_imaging
+        %% Imaging
+        switch param_algo.algorithm
+            case 'airi'
+                [MODEL, RESIDUAL] = airi(dirty, measop, adjoint_measop, param_imaging, param_algo);
+            case 'upnp-bm3d'
+                [MODEL, RESIDUAL] = upnp_bm3d(dirty, measop, adjoint_measop, param_imaging, param_algo);
+            case 'cairi'
+                [MODEL, RESIDUAL] = cairi(y, measop, adjoint_measop, aW, param_imaging, param_algo);
+            case 'cpnp-bm3d'
+                [MODEL, RESIDUAL] = cpnp_bm3d(y, measop, adjoint_measop, aW, param_imaging, param_algo);
+        end
+
+        %% Save final results
+        fitswrite(MODEL, fullfile(param_imaging.resultPath, [param_algo.algorithm, '_model_image.fits']))
+        fitswrite(RESIDUAL, fullfile(param_imaging.resultPath, [param_algo.algorithm, '_residual_dirty_image.fits']))
+        fitswrite(RESIDUAL ./ PSFPeak, fullfile(param_imaging.resultPath, [param_algo.algorithm, '_residual_dirty_image_normalised.fits']))
+        fprintf("\nFits files saved.")
+
+        %% Final metrics
+        fprintf('\nINFO: The standard deviation of the final residual dirty image %g', std(RESIDUAL, 0, 'all'))
+        fprintf('\nINFO: The standard deviation of the normalised final residual dirty image %g', std(RESIDUAL, 0, 'all') / PSFPeak)
+        fprintf('\nINFO: The ratio between the norm of the residual and the dirty image: ||residual|| / || dirty || =  %g', norm(RESIDUAL(:))./norm(dirty(:)))
+        if isfield(param_imaging,'groundtruth') && ~isempty(param_imaging.groundtruth) && isfile(param_imaging.groundtruth)
+            gdth_img = fitsread(param_imaging.groundtruth);
+            rsnr = 20*log10( norm(gdth_img(:)) / norm(MODEL(:) - gdth_img(:)) );
+            fprintf('\nINFO: The signal-to-noise ratio of the final reconstructed image %f dB', rsnr)
+        end
+
+    end
+    fprintf('\nTHE END\n')
 end

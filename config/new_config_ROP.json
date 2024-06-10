@@ -3,7 +3,7 @@
         "main": {
             "srcName": [],
             "uvFile": "",
-            "resultPath": [],
+            "resultPath": ["throw_bin"],
             "algorithm": "airi",
             "superresolution": 1.5,
             "groundtruth": [],
@@ -103,7 +103,7 @@
         "rop": {
             "Nv": 50,
             "Nm": 50,
-            "ROP_type": "modul",
+            "ROP_type": "none",
             "rv_type": "unitary"
         }
      }
