@@ -11,5 +11,5 @@ function [] = util_set_path(param_general)
     addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'lib', filesep, 'operators']);
     addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'lib', filesep, 'operators', filesep, 'ROP']);
     addpath([dirProject, filesep, 'lib', filesep, 'RI-measurement-operator', filesep, 'lib', filesep, 'ddes_utils']);
-    addpath([dirProject, filesep, 'lib', filesep, 'SARA-dictionary', filesep, 'src']);
+    addpath([dirProject, filesep, 'lib', filesep, 'bm3d']);
 end
