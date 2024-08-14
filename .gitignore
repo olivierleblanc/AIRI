@@ -12,6 +12,7 @@ Thumbs.db
 
 # General
 logs/
+jobs/
 *.log
 *.err
 *.out
