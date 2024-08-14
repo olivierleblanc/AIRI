@@ -8,7 +8,7 @@
             "superresolution": 1.5,
             "groundtruth": [],
             "runID": [],
-            "sigma0": 0.01227
+            "sigma0": 0.02487 
         }
     },
 
@@ -17,7 +17,7 @@
         "flag": {  
             "flag_comment_1": "flags",  
             "flag_imaging": true,    
-            "flag_data_weighting": false
+            "flag_data_weighting": true
         },
 
         "other":{
@@ -40,7 +40,7 @@
         "airi_default": {
             "denoiser_comment_2": "airi default params", 
             "imMinItr": 100,
-            "imMaxItr": 1000,
+            "imMaxItr": 4000,
             "imVarTol": 5e-5,
             "itrSave": 200,
             "dnnAdaptivePeakTolMax": 1e-1,
@@ -101,8 +101,8 @@
         "__comment": "ROP",
 
         "rop": {
-            "Nv": 50,
-            "Nm": 50,
+            "Np": 20,
+            "Nm": 150,
             "ROP_type": "none",
             "rv_type": "unitary"
         }
